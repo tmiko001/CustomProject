@@ -104,36 +104,36 @@ module top (
     reg pixel_wr_en_1 = 0, pixel_wr_en_2 = 0, pixel_wr_en_3;
     wire pixel_wr_en_edge = pixel_wr_en_2 && !pixel_wr_en_3;
 
-    // always @(posedge clk_100m) begin
-    //     if (~reset) begin
-    //         pixel_wr_en_1 <= pixel_wr_en;
-    //         pixel_wr_en_2 <= pixel_wr_en_1;
-    //         pixel_wr_en_3 <= pixel_wr_en_2;
-
-    //         wr_en <= wr_en & ~wr_ack;
-    //         if (pixel_wr_en) begin
-    //             if (~pixel_addr[0]) begin
-    //                 wr_data[7:0] <= pixel_half;
-    //             end else begin
-    //                 wr_data[15:8] <= pixel_half;
-    //                 wr_addr <= {0, pixel_addr[22:1]};
-    //                 wr_en <= 1;
-    //             end 
-    //         end 
-    //     end
-    // end
-
-    integer clk_count = 0;
-    always @(posedge clk_25m) begin
+    always @(posedge clk_100m) begin
         if (~reset) begin
-            if (wr_addr <= 24'h01FE00) begin
-                wr_data <= wr_addr[4] ? 16'hF800 : 16'h001F;
-                wr_en <= 1;
-                if (wr_ack) wr_addr <= wr_addr + 1;
-            end else begin
-                wr_en <= 0;
-            end
+            pixel_wr_en_1 <= pixel_wr_en;
+            pixel_wr_en_2 <= pixel_wr_en_1;
+            pixel_wr_en_3 <= pixel_wr_en_2;
+
+            wr_en <= wr_en & ~wr_ack;
+            if (pixel_wr_en) begin
+                if (~pixel_addr[0]) begin
+                    wr_data[7:0] <= pixel_half;
+                end else begin
+                    wr_data[15:8] <= pixel_half;
+                    wr_addr <= {0, pixel_addr[22:1]};
+                    wr_en <= 1;
+                end 
+            end 
         end
     end
+
+    // integer clk_count = 0;
+    // always @(posedge clk_25m) begin
+    //     if (~reset) begin
+    //         if (wr_addr <= 24'h01FE00) begin
+    //             wr_data <= wr_addr[4] ? 16'hF800 : 16'hFF00;
+    //             wr_en <= 1;
+    //             if (wr_ack) wr_addr <= wr_addr + 1;
+    //         end else begin
+    //             wr_en <= 0;
+    //         end
+    //     end
+    // end
 
 endmodule
