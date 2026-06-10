@@ -4,9 +4,10 @@
 `include "pll_clocks.v"
 `include "sdram_controller.v"
 `include "display_controller.v"
-`include "ws2812_regs.v"
-`include "ws2812_writer.v"
-`include "ws2812_spi_controller.v"
+`include "ws2812_spi_rx.v"
+`include "sync_fifo.v"
+`include "ws2812_tx.v"
+`include "ws2812_controller.v"
 
 module top (
     // iCESugar-Pro 25MHz onboard clock (Pin P6)
@@ -26,7 +27,7 @@ module top (
 
     // RGB LCD Interface (480x272)
     output wire        lcd_clk,
-    output wire        lcd_hsync,
+    output wire        lcd_hsync1,
     output wire        lcd_vsync,
     output wire        lcd_de,
     output wire [7:0]  lcd_r,
@@ -106,87 +107,22 @@ module top (
         .framebuffer_wren(pixel_wr_en)
     );
 
-    assign dbg = {data_cmd, pico, sclk, cs_n};
-
-    // --- WS2812 integration signals ---
-    wire        ws_rx_ready;
-    wire [7:0]  ws_rx_data;
-    wire        ws_poci;
-
-    // write path from SPI controller to regs
-    wire        ws_wr_en;
-    wire [1:0]  ws_wr_bank;
-    wire [5:0]  ws_wr_index;
-    wire [23:0] ws_wr_data;
-
-    // reader side for writer
-    wire        ws_rd_req;
-    wire [1:0]  ws_rd_bank;
-    wire [5:0]  ws_rd_index;
-    wire [23:0] ws_rd_data;
-    wire        ws_rd_valid;
-
-    wire        ws_start;
-    wire [1:0]  ws_start_bank;
-    wire        ws_busy;
-
-    // instantiate a spi_peripheral sampled in clk_100m domain so transfers land in same domain as regs/writer
-    spi_peripheral # (.SPI_MODE(0)) spi_led(
+    ws2812_controller ws2812_inst (
         .clk(clk_100m),
         .reset(reset),
-        .i_CS_n(cs_led_n),
-        .i_SCLK(sclk),
-        .i_PICO(pico),
-        .o_POCI(ws_poci),
-        .o_rx_ready(ws_rx_ready),
-        .o_rx_data(ws_rx_data)
-    );
-
-    // SPI -> register file controller (operates in clk_100m domain)
-    ws2812_spi_controller ws_spi_ctrl(
-        .clk(clk_100m),
-        .rst(reset),
-        .rx_ready(ws_rx_ready),
-        .rx_data(ws_rx_data),
-        .wr_en(ws_wr_en),
-        .wr_bank(ws_wr_bank),
-        .wr_index(ws_wr_index),
-        .wr_data(ws_wr_data),
-        .start(ws_start),
-        .start_bank(ws_start_bank),
-        .busy(ws_busy)
-    );
-
-    // Register file (clk_100m domain)
-    ws2812_regs ws_regs(
-        .clk(clk_100m),
-        .rst(reset),
-        .wr_en(ws_wr_en),
-        .wr_bank(ws_wr_bank),
-        .wr_index(ws_wr_index),
-        .wr_data(ws_wr_data),
-        .rd_req(ws_rd_req),
-        .rd_bank(ws_rd_bank),
-        .rd_index(ws_rd_index),
-        .rd_data(ws_rd_data),
-        .rd_valid(ws_rd_valid)
-    );
-
-    // Writer: serialize and send to physical pin
-    ws2812_writer writer(
-        .clk(clk_100m),
-        .rst(reset),
-        .start(ws_start),
-        .bank_sel(ws_start_bank),
-        .pixel_count(60),
-        .busy(),
+        .cs_led_n(cs_led_n),
+        .sclk(sclk),
+        .pico(pico),
         .ws_data(ws_data),
-        .rd_req(ws_rd_req),
-        .rd_bank(ws_rd_bank),
-        .rd_index(ws_rd_index),
-        .rd_data(ws_rd_data),
-        .rd_valid(ws_rd_valid)
+        .busy(ws_busy),
+        .fifo_full(ws_fifo_full)
     );
+
+    assign dbg = {ws_busy, ws_fifo_full, data_cmd, pico, sclk, cs_n, cs_led_n, 1'b0};
+
+    // --- WS2812 integration signals ---
+    wire        ws_busy;
+    wire        ws_fifo_full;
 
     integer clock_count = 0;
     wire reset;
