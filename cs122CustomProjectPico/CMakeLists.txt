@@ -35,7 +35,12 @@ pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(cs122CustomProjectPico cs122CustomProjectPico.c )
+add_executable(cs122CustomProjectPico 
+    cs122CustomProjectPico.c 
+    lcd_helpers.c
+    led_helpers.c
+    touch_helpers.c
+    )
 
 pico_set_program_name(cs122CustomProjectPico "cs122CustomProjectPico")
 pico_set_program_version(cs122CustomProjectPico "0.1")
@@ -56,6 +61,9 @@ target_include_directories(cs122CustomProjectPico PRIVATE
 # Add any user requested libraries
 target_link_libraries(cs122CustomProjectPico 
         hardware_spi
+        )
+target_link_libraries(cs122CustomProjectPico 
+        hardware_adc
         )
 
 pico_add_extra_outputs(cs122CustomProjectPico)
